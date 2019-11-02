@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"time"
 
 	"github.com/triamazikamno/tinkoff-invest/pkg/tinkoffinvest"
 )
@@ -22,6 +23,7 @@ func main() {
 		return
 	}
 	var totalRUB, totalUSD float64
+	curTime := time.Now()
 	colorRUB, colorUSD := "\033[32m", "\033[32m"
 	for _, pos := range positions {
 		switch pos.Currency {
@@ -36,6 +38,10 @@ func main() {
 	}
 	if totalRUB < 0 {
 		colorRUB = "\033[31m"
+	}
+	if wd := curTime.Weekday(); (curTime.Hour() >= 2 && curTime.Hour() < 10) || wd == time.Saturday || wd == time.Sunday {
+		colorUSD = "\033[0m"
+		colorRUB = "\033[0m"
 	}
 	fmt.Printf("%s₽%.2f\033[0m %s$%.2f\033[0m\n---\n", colorRUB, totalRUB, colorUSD, totalUSD)
 	sort.Slice(positions, func(i, j int) bool {
