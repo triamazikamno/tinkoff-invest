@@ -1,13 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"sort"
 	"time"
 
-	"github.com/triamazikamno/tinkoff-invest/pkg/tinkoffinvest"
+	sdk "github.com/TinkoffCreditSystems/invest-openapi-go-sdk"
 )
 
 func main() {
@@ -16,8 +17,8 @@ func main() {
 		log.Fatal("please specify API_KEY variable")
 		return
 	}
-	ti := tinkoffinvest.NewAPI(apiKey)
-	positions, err := ti.Portfolio()
+	ti := sdk.NewRestClient(apiKey)
+	positions, err := ti.Portfolio(context.Background())
 	if err != nil {
 		log.Fatalf("failed to get portfolio: %v", err)
 		return
@@ -25,12 +26,15 @@ func main() {
 	var totalRUB, totalUSD float64
 	curTime := time.Now()
 	colorRUB, colorUSD := "\033[32m", "\033[32m"
-	for _, pos := range positions {
-		switch pos.Currency {
+	for _, pos := range positions.Positions {
+		if pos.InstrumentType == "Currency" {
+			continue
+		}
+		switch pos.ExpectedYield.Currency {
 		case "USD":
-			totalUSD += pos.Profit
+			totalUSD += pos.ExpectedYield.Value
 		case "RUB":
-			totalRUB += pos.Profit
+			totalRUB += pos.ExpectedYield.Value
 		}
 	}
 	if totalUSD < 0 {
@@ -44,23 +48,27 @@ func main() {
 		colorRUB = "\033[0m"
 	}
 	fmt.Printf("%s₽%.2f\033[0m %s$%.2f\033[0m\n---\n", colorRUB, totalRUB, colorUSD, totalUSD)
-	sort.Slice(positions, func(i, j int) bool {
-		return positions[i].Profit > positions[j].Profit
+	sort.Slice(positions.Positions, func(i, j int) bool {
+		return positions.Positions[i].ExpectedYield.Value > positions.Positions[j].ExpectedYield.Value
 	})
-	for _, pos := range positions {
+	for _, pos := range positions.Positions {
+		if pos.InstrumentType == "Currency" {
+			continue
+		}
+
 		color := "green"
 		switch {
-		case pos.Profit < 0 && pos.Profit > -0.8:
+		case pos.ExpectedYield.Value < 0 && pos.ExpectedYield.Value > -0.8:
 			color = "white"
-		case pos.Profit < 0:
+		case pos.ExpectedYield.Value < 0:
 			color = "red"
 		}
 
 		sign := "$"
-		if pos.Currency == "RUB" {
+		if pos.ExpectedYield.Currency == "RUB" {
 			sign = "₽"
 		}
-		fmt.Printf("%s: %s%.2f | color=%s\n", pos.Ticker, sign, pos.Profit, color)
+		fmt.Printf("%s: %s%.2f | color=%s\n", pos.Ticker, sign, pos.ExpectedYield.Value, color)
 	}
 
 }

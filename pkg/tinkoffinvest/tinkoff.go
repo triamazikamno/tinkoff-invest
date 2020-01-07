@@ -1,76 +1,87 @@
 package tinkoffinvest
 
 import (
-	"encoding/json"
-	"net/http"
+	"context"
+	"math/rand"
+	"time"
 
-	"github.com/pkg/errors"
+	sdk "github.com/TinkoffCreditSystems/invest-openapi-go-sdk"
 )
 
 type TinkoffInvest struct {
-	apiKey     string
-	endpoint   string
-	httpClient *http.Client
-}
-
-type Position struct {
-	Ticker   string
-	Currency string
-	Profit   float64
+	RestClient *sdk.RestClient
 }
 
 func NewAPI(apiKey string) *TinkoffInvest {
 	t := &TinkoffInvest{
-		apiKey:     apiKey,
-		endpoint:   "https://api-invest.tinkoff.ru/openapi",
-		httpClient: http.DefaultClient,
+		RestClient: sdk.NewRestClient(apiKey),
 	}
+
 	return t
 }
 
-func (t *TinkoffInvest) Portfolio() ([]Position, error) {
-	req, err := http.NewRequest(http.MethodGet, t.endpoint+"/portfolio", nil)
+func (ti *TinkoffInvest) InstrumentByTicker(ctx context.Context, ticker string) (sdk.Instrument, error) {
+	instruments, err := ti.RestClient.SearchInstrumentByTicker(ctx, ticker)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create req")
+		return sdk.Instrument{}, err
 	}
-	req.Header.Set("Authorization", "Bearer "+t.apiKey)
-	req.Header.Set("Accept", "application/json")
-	res, err := t.httpClient.Do(req)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to make request")
-	}
-	defer res.Body.Close()
-	var result struct {
-		Payload struct {
-			Positions []struct {
-				Ticker         string
-				InstrumentType string
-				Balance        float64
-				ExpectedYield  struct {
-					Currency string
-					Value    float64
-				}
-				AveragePositionPrice struct {
-					Currency string
-					Value    float64
-				}
-			}
+	for _, instrument := range instruments {
+		if instrument.Ticker == ticker {
+			return instrument, nil
 		}
 	}
-	err = json.NewDecoder(res.Body).Decode(&result)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to decode response")
+	return sdk.Instrument{}, nil
+}
+
+type Trade struct {
+	Date     time.Time
+	Type     string
+	Profit   float64
+	ProfitPc float64
+}
+
+const (
+	OperationTypeBuyCard = "BuyCard"
+)
+
+var Currencies = []Currency{
+	RUB,
+	USD,
+	EUR,
+}
+
+type Currency string
+
+const (
+	RUB Currency = "RUB"
+	USD Currency = "USD"
+	EUR Currency = "EUR"
+)
+
+func (c Currency) Sign() string {
+	switch c {
+	case RUB:
+		return "₽"
+	case USD:
+		return "$"
+	case EUR:
+		return "€"
+	default:
+		return string(c)
 	}
-	positions := make([]Position, 0)
-	for _, pos := range result.Payload.Positions {
-		if pos.InstrumentType == "Currency" {
-			continue
-		}
-		positions = append(positions, Position{
-			Ticker:   pos.Ticker,
-			Currency: pos.ExpectedYield.Currency,
-			Profit:   pos.ExpectedYield.Value,
-		})
+}
+
+func (c Currency) String() string {
+	return string(c)
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func requestID() string {
+	b := make([]rune, 12)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
-	return positions, nil
+
+	return string(b)
 }
