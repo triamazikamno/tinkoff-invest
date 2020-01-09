@@ -171,7 +171,7 @@ func (bot *Bot) HandleWatchList(ctx context.Context, chatID int64) {
 	}
 	var msg string
 	for _, pw := range items {
-		if _, t, ok := bot.dataCache.get(pw.Ticker); ok {
+		if _, t, ok := bot.dataCache.get(pw.Ticker, true); ok {
 			pw.TickerURL = fmt.Sprintf("[$%s](%s)", pw.Ticker, tickerURL(pw.Ticker, t))
 		}
 		msg += pw.String() + "\n"
@@ -260,7 +260,7 @@ func (bot *Bot) StreamingWorker(chatID int64) *tinkoffinvest.StreamingClient {
 							if err != nil {
 								bot.log.Error().Interface("pw", pw).Interface("event", event).Msg("failed to set last value")
 							}
-							if _, t, ok := bot.dataCache.get(pw.Ticker); ok {
+							if _, t, ok := bot.dataCache.get(pw.Ticker, true); ok {
 								pw.TickerURL = fmt.Sprintf("[$%s](%s)", pw.Ticker, tickerURL(pw.Ticker, t))
 							}
 							bot.log.Info().
@@ -308,7 +308,8 @@ func (bot *Bot) priceWatcherDailyWorker() {
 						Relative float64
 					}
 					Symbol struct {
-						Ticker string
+						Ticker   string
+						ShowName string
 					}
 				}
 			}
@@ -323,7 +324,10 @@ func (bot *Bot) priceWatcherDailyWorker() {
 		earners := make([]earner, 0, len(result.Payload.Values))
 		seen := make(map[string]struct{})
 		for _, item := range result.Payload.Values {
-			earners = append(earners, earner{Ticker: item.Symbol.Ticker, Earning: item.Earnings.Relative * 100})
+			earners = append(
+				earners,
+				earner{Ticker: item.Symbol.Ticker, Name: item.Symbol.ShowName, Earning: item.Earnings.Relative * 100},
+			)
 			seen[item.Symbol.Ticker] = struct{}{}
 		}
 
@@ -342,6 +346,7 @@ func (bot *Bot) priceWatcherDailyWorker() {
 							RegularMarketChangePercent float64
 							RegularMarketTime          int64
 							Symbol                     string
+							Name                       string `json:"shortName"`
 						}
 					}
 				}
@@ -359,7 +364,10 @@ func (bot *Bot) priceWatcherDailyWorker() {
 					if _, ok := seen[ticker]; ok {
 						continue
 					}
-					earners = append(earners, earner{Ticker: ticker, Earning: item.RegularMarketChangePercent, IsExternal: true})
+					earners = append(
+						earners,
+						earner{Ticker: ticker, Earning: item.RegularMarketChangePercent, IsExternal: true, Name: item.Name},
+					)
 				}
 			}
 		}
@@ -379,6 +387,7 @@ func (bot *Bot) priceWatcherDailyWorker() {
 							RegularMarketChangePercent float64
 							RegularMarketTime          int64
 							Symbol                     string
+							Name                       string `json:"shortName"`
 						}
 					}
 				}
@@ -396,7 +405,10 @@ func (bot *Bot) priceWatcherDailyWorker() {
 					if _, ok := seen[ticker]; ok {
 						continue
 					}
-					earners = append(earners, earner{Ticker: ticker, Earning: item.RegularMarketChangePercent, IsExternal: true})
+					earners = append(
+						earners,
+						earner{Ticker: ticker, Earning: item.RegularMarketChangePercent, IsExternal: true, Name: item.Name},
+					)
 				}
 			}
 		}
@@ -438,10 +450,13 @@ func (bot *Bot) notifyPriceDaily(chatID int64, item earner) {
 		return
 	}
 	ticker := item.Ticker
-	if _, t, ok := bot.dataCache.get(ticker); ok {
-		ticker = fmt.Sprintf("[$%s](%s)", item.Ticker, tickerURL(item.Ticker, t))
+	if _, t, ok := bot.dataCache.get(ticker, true); ok {
+		ticker = fmt.Sprintf("[$%s %s](%s)", item.Ticker, markDownEscape.Replace(item.Name), tickerURL(item.Ticker, t))
 	} else {
-		ticker = markDownEscape.Replace(`\*` + ticker)
+		ticker = fmt.Sprintf(
+			"[\\*%s %s](https://finance.yahoo.com/quote/%s)",
+			item.Ticker, markDownEscape.Replace(item.Name), item.Ticker,
+		)
 	}
 	bot.log.Info().Int64("chatID", chatID).Interface("item", item).Msg("Sending global watch alarm")
 	bot.sendText(
@@ -478,10 +493,13 @@ func (bot *Bot) HandleGainers(ctx context.Context, chatID int64, args []string) 
 	var msg string
 	for _, item := range items {
 		ticker := item.Ticker
-		if _, t, ok := bot.dataCache.get(ticker); ok {
-			ticker = fmt.Sprintf("[$%s](%s)", item.Ticker, tickerURL(item.Ticker, t))
+		if _, t, ok := bot.dataCache.get(ticker, true); ok {
+			ticker = fmt.Sprintf("[$%s %s](%s)", item.Ticker, markDownEscape.Replace(item.Name), tickerURL(item.Ticker, t))
 		} else {
-			ticker = markDownEscape.Replace(`\*` + ticker)
+			ticker = fmt.Sprintf(
+				"[\\*%s %s](https://finance.yahoo.com/quote/%s)",
+				item.Ticker, markDownEscape.Replace(item.Name), item.Ticker,
+			)
 		}
 		entry := fmt.Sprintf("`%-8s `%s\n", numSign(item.Earning)+humanize.FormatFloat("", item.Earning)+"%", ticker)
 		if len(msg)+len(entry) >= 3000 {
@@ -524,10 +542,13 @@ func (bot *Bot) HandleLosers(ctx context.Context, chatID int64, args []string) {
 	for i := len(items) - 1; i >= 0; i-- {
 		item := items[i]
 		ticker := item.Ticker
-		if _, t, ok := bot.dataCache.get(ticker); ok {
-			ticker = fmt.Sprintf("[$%s](%s)", item.Ticker, tickerURL(item.Ticker, t))
+		if _, t, ok := bot.dataCache.get(ticker, true); ok {
+			ticker = fmt.Sprintf("[$%s %s](%s)", item.Ticker, markDownEscape.Replace(item.Name), tickerURL(item.Ticker, t))
 		} else {
-			ticker = markDownEscape.Replace(`\*` + ticker)
+			ticker = fmt.Sprintf(
+				"[\\*%s %s](https://finance.yahoo.com/quote/%s)",
+				item.Ticker, markDownEscape.Replace(item.Name), item.Ticker,
+			)
 		}
 		entry := fmt.Sprintf("`%-8s `%s\n", numSign(item.Earning)+humanize.FormatFloat("", item.Earning)+"%", ticker)
 		if len(msg)+len(entry) >= 3000 {
@@ -546,6 +567,7 @@ type earners []earner
 type earner struct {
 	Ticker     string
 	Earning    float64
+	Name       string
 	IsExternal bool
 }
 

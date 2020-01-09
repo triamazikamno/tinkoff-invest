@@ -44,7 +44,7 @@ const (
 )
 
 //nolint: nakedret
-func (d *dataCache) get(query string) (instrument sdk.Instrument, instrumentType instrumentType, found bool) {
+func (d *dataCache) get(query string, exact bool) (instrument sdk.Instrument, instrumentType instrumentType, found bool) {
 	if item, ok := d.stocks.Load(query); ok {
 		return item.(sdk.Instrument), typeStocks, true
 	}
@@ -53,6 +53,9 @@ func (d *dataCache) get(query string) (instrument sdk.Instrument, instrumentType
 	}
 	if item, ok := d.etfs.Load(query); ok {
 		return item.(sdk.Instrument), typeEtfs, true
+	}
+	if exact {
+		return
 	}
 	d.stocks.Range(func(key, val interface{}) bool {
 		if item, ok := val.(sdk.Instrument); ok {
@@ -147,7 +150,7 @@ func (bot *Bot) HandleInfo(ctx context.Context, chatID int64, args []string) {
 	ti := tinkoffinvest.NewAPI(apiKey)
 	var err error
 	query := strings.ToUpper(args[0])
-	item, instrumentType, found := bot.dataCache.get(query)
+	item, instrumentType, found := bot.dataCache.get(query, false)
 	if !found {
 		if len(query) > 8 {
 			item, _ = ti.RestClient.SearchInstrumentByFIGI(ctx, query)
@@ -158,7 +161,7 @@ func (bot *Bot) HandleInfo(ctx context.Context, chatID int64, args []string) {
 				item = instruments[0]
 			}
 		}
-		_, instrumentType, _ = bot.dataCache.get(item.Ticker)
+		_, instrumentType, _ = bot.dataCache.get(item.Ticker, false)
 	}
 	if item.Ticker == "" {
 		bot.sendError(chatID, "Инструмент не найден")
