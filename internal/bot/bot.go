@@ -38,7 +38,7 @@ type Bot struct {
 	log                zerolog.Logger
 	defaultApiKey      string
 	dataCache          dataCache
-	earners            Earners
+	earners            earners
 }
 
 func NewBot(db db.Database, tbot *tgbotapi.BotAPI, log zerolog.Logger, defaultApiKey string) *Bot {
@@ -67,8 +67,10 @@ func (bot *Bot) HandleHelp(chatID int64) {
 */wl* \- Список отслеживаемых инструментов
 
 */wd \<тикер\>* \- Удалить инструмент из отслеживания
-	Примеры использованя:
-		*/wd AAPL* _Удалит все отслеживания за ценой на акции Apple_
+Примеры использованя:
+*/wd AAPL* _Удалит все отслеживания за ценой на акции Apple_
+
+*/watchglobal \<порог%\>* \- Отслеживать все акции, уведомлять о росте и падении любой акции в пределах торговой сессии\.
 
 */gainers \[число результатов\|порог%\]* \- Вывести список выросших акций за текущий день\. По умолчанию выводит топ 15\.
 	Примеры использования:
@@ -125,13 +127,16 @@ func (bot *Bot) HandleStop(chatID int64) {
 	if err := bot.db.PriceWatchDeleteAll(chatID); err != nil {
 		bot.sendError(chatID, fmt.Sprintf("Не удалось удалить списки отслеживания: %v", err))
 	}
+	if err := bot.db.UnSubscribePriceDaily(chatID); err != nil {
+		bot.sendError(chatID, fmt.Sprintf("Не удалось удалить глобальное отслеживание: %v", err))
+	}
 	bot.sendText(chatID, "Данные удалены", false)
 }
 
 func (bot *Bot) sendText(chatID int64, msg string, isMarkdown bool) {
 	_, err := bot.tg.Send(botMessage(tgbotapi.NewMessage(chatID, msg), isMarkdown))
 	if err != nil {
-		bot.log.Err(err).Msg("failed to send telegram message")
+		bot.log.Err(err).Int64("chatID", chatID).Msg("failed to send telegram message")
 	}
 }
 

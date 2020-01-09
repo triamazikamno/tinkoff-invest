@@ -14,11 +14,12 @@ type StreamingClient struct {
 	ctx           context.Context
 	ctxCancel     context.CancelFunc
 	client        *sdk.StreamingClient
-	events        chan interface{}
+	events        chan Event
 	commands      chan interface{}
 	subscriptions sync.Map
 	apiKey        string
 	log           *zerolog.Logger
+	connCnt       int
 }
 
 type CommandSubscribeCandle struct {
@@ -31,10 +32,15 @@ type CommandUnsubscribeCandle struct {
 	Interval sdk.CandleInterval
 }
 
+type Event struct {
+	ConnectID int
+	Data      interface{}
+}
+
 func NewStreamingClient(apiKey string, log zerolog.Logger) *StreamingClient {
 	c := &StreamingClient{
 		apiKey:   apiKey,
-		events:   make(chan interface{}, 1000),
+		events:   make(chan Event, 1000),
 		commands: make(chan interface{}, 100),
 		log:      &log,
 	}
@@ -49,7 +55,7 @@ func (c *StreamingClient) SetApiKey(apiKey string) {
 	c.apiKey = apiKey
 }
 
-func (c *StreamingClient) Events() <-chan interface{} {
+func (c *StreamingClient) Events() <-chan Event {
 	return c.events
 }
 
@@ -62,22 +68,23 @@ func (c *StreamingClient) StreamingClient() *sdk.StreamingClient {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	for ; ; <-ticker.C {
+		c.connCnt++
 		var err error
 		c.client, err = sdk.NewStreamingClient(c.log, c.apiKey)
 		if err != nil {
-			c.log.Printf("failed to connect to ws: %v\n", err)
+			c.log.Printf("failed to connect to ws[%d]: %v\n", c.connCnt, err)
 			continue
 		}
-		go func() {
+		go func(i int) {
 			err := c.client.RunReadLoop(func(event interface{}) error {
 				select {
 				case <-c.ctx.Done():
 					return nil
-				case c.events <- event:
+				case c.events <- Event{ConnectID: i, Data: event}:
 				}
 				return nil
 			})
-			c.log.Printf("readloop exited with err=%v\n", err)
+			c.log.Printf("readloop exited[%d] with err=%v\n", i, err)
 			c.Lock()
 			c.client.Close()
 			c.client = nil
@@ -90,7 +97,7 @@ func (c *StreamingClient) StreamingClient() *sdk.StreamingClient {
 				c.commands <- sub.cmd
 				return true
 			})
-		}()
+		}(c.connCnt)
 		return c.client
 	}
 }
@@ -101,7 +108,6 @@ func (c *StreamingClient) commandPipe() {
 		case <-c.ctx.Done():
 			return
 		case cmd := <-c.commands:
-			// c.log.Printf("processing command: %+v\n", cmd)
 			switch command := cmd.(type) {
 			case CommandSubscribeCandle:
 				if err := c.StreamingClient().SubscribeCandle(command.FIGI, command.Interval, requestID()); err != nil {

@@ -14,7 +14,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-var apiKey = kingpin.Flag("api-key", "API key").String()
+var apiKey = kingpin.Flag("api-key", "Default API key for anonymous requests").String()
 var logPath = kingpin.Flag("log", "Log file path").Default("/var/log/tinkoffbot.log").String()
 var tgBotApiKey = kingpin.Flag("tg-bot-api-key", "Telegram bot API key").String()
 var listen = kingpin.Flag("listen", "HTTP listen host:port").String()
@@ -141,13 +141,13 @@ func main() {
 				botapi.HandleGainers(context.Background(), chatID, args)
 			case "losers", "l":
 				botapi.HandleLosers(context.Background(), chatID, args)
-			case "watch-global", "wg":
+			case "watchglobal", "wg":
 				botapi.HandleWatchGlobal(context.Background(), chatID, args)
 			case "watch", "w":
 				botapi.HandleWatch(context.Background(), chatID, args)
-			case "watch-list", "wl":
+			case "watchlist", "wl":
 				botapi.HandleWatchList(context.Background(), chatID)
-			case "watch-delete", "wd":
+			case "watchdelete", "wd":
 				botapi.HandleWatchDelete(context.Background(), chatID, args)
 			case "sum", "summary":
 				botapi.HandlePortfolioSummary(context.Background(), chatID)

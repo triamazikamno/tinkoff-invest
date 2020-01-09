@@ -205,13 +205,15 @@ func (bot *Bot) StreamingWorker(chatID int64) *tinkoffinvest.StreamingClient {
 	}
 	if client == nil {
 		client = tinkoffinvest.NewStreamingClient(
-			apiKey, bot.log.With().Str("module", "streaming").Int64("chatID", chatID).Logger(),
+			apiKey, bot.log.With().Str("module", "streaming").Int64("chatID", chatID).Bool("private", isPrivateAccount).Logger(),
 		)
+		if !isPrivateAccount {
+			bot.streamingClients[0] = client
+
+		}
 	}
-	if !isPrivateAccount {
+	if isPrivateAccount {
 		bot.streamingClients[chatID] = client
-	} else {
-		bot.streamingClients[0] = client
 	}
 	allPriceWatchers, err := bot.db.PriceWatchList(chatID)
 	if err != nil {
@@ -224,20 +226,20 @@ func (bot *Bot) StreamingWorker(chatID int64) *tinkoffinvest.StreamingClient {
 	go func() {
 		ti := tinkoffinvest.NewAPI(apiKey)
 		for event := range client.Events() {
-			switch event := event.(type) {
+			switch eventData := event.Data.(type) {
 			case sdk.CandleEvent:
-				items, err := bot.db.PriceWatchListByFIGI(chatID, event.Candle.FIGI)
+				items, err := bot.db.PriceWatchListByFIGI(chatID, eventData.Candle.FIGI)
 				if err != nil {
 					bot.log.Error().Int64("chatID", chatID).Interface("event", event).Msg("failed to get price watch list")
 					continue
 				}
 				for _, pw := range items {
-					if pw.CurrentValue != event.Candle.ClosePrice {
-						err = bot.db.PriceWatchSetCurrentValue(pw.FIGI, event.Candle.ClosePrice)
+					if pw.CurrentValue != eventData.Candle.ClosePrice {
+						err = bot.db.PriceWatchSetCurrentValue(pw.FIGI, eventData.Candle.ClosePrice)
 						if err != nil {
 							bot.log.Error().Interface("pw", pw).Interface("event", event).Msg("failed to set current value")
 						}
-						pw.CurrentValue = event.Candle.ClosePrice
+						pw.CurrentValue = eventData.Candle.ClosePrice
 					}
 					if pw.IsPc {
 						pc := pw.Pc()
@@ -261,7 +263,8 @@ func (bot *Bot) StreamingWorker(chatID int64) *tinkoffinvest.StreamingClient {
 							if _, t, ok := bot.dataCache.get(pw.Ticker); ok {
 								pw.TickerURL = fmt.Sprintf("[$%s](%s)", pw.Ticker, tickerURL(pw.Ticker, t))
 							}
-							bot.log.Info().Int64("chatID", pw.ChatID).Str("msg", pw.String()).Msg("sending price watch alarm")
+							bot.log.Info().
+								Int64("chatID", pw.ChatID).Interface("event", event).Str("msg", pw.String()).Msg("sending price watch alarm")
 							bot.sendText(pw.ChatID,
 								pw.String(),
 								true,
@@ -273,12 +276,10 @@ func (bot *Bot) StreamingWorker(chatID int64) *tinkoffinvest.StreamingClient {
 						if err != nil {
 							bot.log.Error().Interface("pw", pw).Interface("event", event).Msg("failed to delete fixed price watcher")
 						}
-						bot.log.Info().Int64("chatID", pw.ChatID).Str("msg", pw.String()).Msg("sending price watch alarm")
-						bot.sendText(
-							pw.ChatID,
-							pw.String(),
-							true,
-						)
+						bot.log.Info().
+							Int64("chatID", pw.ChatID).Interface("event", event).Str("msg", pw.String()).Msg("sending price watch alarm")
+
+						bot.sendText(pw.ChatID, pw.String(), true)
 					}
 				}
 			default:
@@ -319,10 +320,10 @@ func (bot *Bot) priceWatcherDailyWorker() {
 			bot.log.Error().Err(err).Msg("failed to decode daily prices")
 			continue
 		}
-		earners := make([]Earner, 0, len(result.Payload.Values))
+		earners := make([]earner, 0, len(result.Payload.Values))
 		seen := make(map[string]struct{})
 		for _, item := range result.Payload.Values {
-			earners = append(earners, Earner{Ticker: item.Symbol.Ticker, Earning: item.Earnings.Relative * 100})
+			earners = append(earners, earner{Ticker: item.Symbol.Ticker, Earning: item.Earnings.Relative * 100})
 			seen[item.Symbol.Ticker] = struct{}{}
 		}
 
@@ -358,7 +359,7 @@ func (bot *Bot) priceWatcherDailyWorker() {
 					if _, ok := seen[ticker]; ok {
 						continue
 					}
-					earners = append(earners, Earner{Ticker: ticker, Earning: item.RegularMarketChangePercent, IsExternal: true})
+					earners = append(earners, earner{Ticker: ticker, Earning: item.RegularMarketChangePercent, IsExternal: true})
 				}
 			}
 		}
@@ -395,7 +396,7 @@ func (bot *Bot) priceWatcherDailyWorker() {
 					if _, ok := seen[ticker]; ok {
 						continue
 					}
-					earners = append(earners, Earner{Ticker: ticker, Earning: item.RegularMarketChangePercent, IsExternal: true})
+					earners = append(earners, earner{Ticker: ticker, Earning: item.RegularMarketChangePercent, IsExternal: true})
 				}
 			}
 		}
@@ -428,7 +429,7 @@ func (bot *Bot) priceWatcherDailyWorker() {
 	}
 }
 
-func (bot *Bot) notifyPriceDaily(chatID int64, item Earner) {
+func (bot *Bot) notifyPriceDaily(chatID int64, item earner) {
 	alreadyNotified, err := bot.db.PriceDailyMarkNotified(chatID, item.Ticker)
 	if err != nil {
 		bot.log.Error().Err(err).Int64("chatID", chatID).Interface("item", item).Msg("failed to notify daily price")
@@ -442,7 +443,7 @@ func (bot *Bot) notifyPriceDaily(chatID int64, item Earner) {
 	} else {
 		ticker = markDownEscape.Replace(`\*` + ticker)
 	}
-
+	bot.log.Info().Int64("chatID", chatID).Interface("item", item).Msg("Sending global watch alarm")
 	bot.sendText(
 		chatID,
 		fmt.Sprintf("`%-8s `%s\n", numSign(item.Earning)+humanize.FormatFloat("", item.Earning)+"%", ticker),
@@ -540,15 +541,15 @@ func (bot *Bot) HandleLosers(ctx context.Context, chatID int64, args []string) {
 	}
 }
 
-type Earners []Earner
+type earners []earner
 
-type Earner struct {
+type earner struct {
 	Ticker     string
 	Earning    float64
 	IsExternal bool
 }
 
-func (e Earners) Gainers(n int, threshold float64) []Earner {
+func (e earners) Gainers(n int, threshold float64) []earner {
 	if n == 0 && threshold == 0 {
 		return nil
 	}
@@ -569,7 +570,7 @@ func (e Earners) Gainers(n int, threshold float64) []Earner {
 	return nil
 }
 
-func (e Earners) Losers(n int, threshold float64) []Earner {
+func (e earners) Losers(n int, threshold float64) []earner {
 	if n == 0 && threshold == 0 {
 		return nil
 	}

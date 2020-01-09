@@ -9,7 +9,7 @@ import (
 
 func (bot *Bot) HandleApiKey(ctx context.Context, chatID int64, args []string) {
 	if len(args) == 0 {
-		bot.sendText(chatID, "Ошибка: отсутствует API ключ\\. [Инструкция по получению](https://tinkoffcreditsystems.github.io/invest-openapi/auth/#_2).\nПример: */apikey t\\.xwbNB-uFZ4DSHG3Hk5kFkdk2kGDOpW4*", true)
+		bot.sendText(chatID, "Ошибка: отсутствует API ключ\\. [Инструкция по получению](https://tinkoffcreditsystems.github.io/invest-openapi/auth/#_2)\\.\nПример: */apikey t\\.xwbNB\\-uFZ4DSHG3Hk5kFkdk2kGDOpW4*", true)
 		return
 	}
 	if bot.db.IsSet() {

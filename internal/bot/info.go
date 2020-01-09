@@ -134,7 +134,7 @@ func (bot *Bot) dataCacheWorker() {
 
 func (bot *Bot) HandleInfo(ctx context.Context, chatID int64, args []string) {
 	if len(args) < 1 {
-		bot.sendText(chatID, "Ошибка: не указан тикер.\nПример: */info AAPL*", true)
+		bot.sendText(chatID, "Ошибка: не указан тикер\\.\nПример: */info AAPL*", true)
 		return
 	}
 	apiKey := bot.fetchApiKey(chatID, false)
@@ -320,6 +320,9 @@ func splitPeriod(period, partSize int64) []Period {
 		to := startTime.Add(time.Duration(partSize) * time.Minute)
 		if to.After(endTime) {
 			to = endTime
+		}
+		if startTime.Equal(to) {
+			break
 		}
 		periods = append(periods, Period{
 			from: startTime,
