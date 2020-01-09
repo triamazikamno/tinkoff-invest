@@ -40,10 +40,6 @@ type Trade struct {
 	ProfitPc float64
 }
 
-const (
-	OperationTypeBuyCard = "BuyCard"
-)
-
 var Currencies = []Currency{
 	RUB,
 	USD,

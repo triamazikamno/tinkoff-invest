@@ -3,7 +3,7 @@ module github.com/triamazikamno/tinkoff-invest
 go 1.13
 
 require (
-	github.com/TinkoffCreditSystems/invest-openapi-go-sdk v0.3.0
+	github.com/TinkoffCreditSystems/invest-openapi-go-sdk v0.3.1-0.20200109133639-b2f872516ad3
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/bseolized/shadowmaker v0.0.0-20191013112750-d1f2d54dfcab

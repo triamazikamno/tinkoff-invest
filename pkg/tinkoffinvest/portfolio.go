@@ -178,7 +178,7 @@ func (ti *TinkoffInvest) Portfolio(ctx context.Context) (Portfolio, error) {
 			ops = make([]sdk.Operation, 0)
 		}
 		switch rawOp.OperationType {
-		case sdk.BUY, OperationTypeBuyCard, sdk.SELL, sdk.OperationTypeDividend:
+		case sdk.BUY, sdk.OperationTypeBuyCard, sdk.SELL, sdk.OperationTypeDividend:
 			ops = append(ops, rawOp)
 		case sdk.OperationTypeTax, sdk.OperationTypeTaxDividend, sdk.OperationTypeTaxBack:
 			ops = append(ops, rawOp)
@@ -214,7 +214,7 @@ func (ti *TinkoffInvest) Portfolio(ctx context.Context) (Portfolio, error) {
 		for _, op := range ops {
 			item.Fee += op.Commission.Value
 			switch op.OperationType {
-			case sdk.BUY, OperationTypeBuyCard:
+			case sdk.BUY, sdk.OperationTypeBuyCard:
 				if len(op.Trades) == 0 {
 					continue
 				}
