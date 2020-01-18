@@ -150,18 +150,25 @@ func (bot *Bot) HandleInfo(ctx context.Context, chatID int64, args []string) {
 	ti := tinkoffinvest.NewAPI(apiKey)
 	var err error
 	query := strings.ToUpper(args[0])
-	item, instrumentType, found := bot.dataCache.get(query, false)
-	if !found {
-		if len(query) > 8 {
-			item, _ = ti.RestClient.SearchInstrumentByFIGI(ctx, query)
-		}
-		if item.FIGI == "" {
-			instruments, _ := ti.RestClient.SearchInstrumentByTicker(ctx, query)
-			if len(instruments) > 0 {
-				item = instruments[0]
+	var item sdk.Instrument
+	var instrumentType instrumentType
+	var found bool
+	if strings.HasPrefix(query, "$") {
+		item, instrumentType, _ = bot.dataCache.get(strings.TrimPrefix(query, "$"), true)
+	} else {
+		item, instrumentType, found = bot.dataCache.get(query, false)
+		if !found {
+			if len(query) > 8 {
+				item, _ = ti.RestClient.SearchInstrumentByFIGI(ctx, query)
 			}
+			if item.FIGI == "" {
+				instruments, _ := ti.RestClient.SearchInstrumentByTicker(ctx, query)
+				if len(instruments) > 0 {
+					item = instruments[0]
+				}
+			}
+			_, instrumentType, _ = bot.dataCache.get(item.Ticker, false)
 		}
-		_, instrumentType, _ = bot.dataCache.get(item.Ticker, false)
 	}
 	if item.Ticker == "" {
 		bot.sendError(chatID, "Инструмент не найден")
