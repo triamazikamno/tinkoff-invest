@@ -52,7 +52,13 @@ func NewBot(db db.Database, tbot *tgbotapi.BotAPI, log zerolog.Logger, defaultAp
 	return bot
 }
 
-func (bot *Bot) HandleHelp(chatID int64) {
+func (bot *Bot) Start(updates tgbotapi.UpdatesChannel) {
+	go bot.dataCacheWorker()
+	go bot.priceWatcherDailyWorker()
+	go bot.listenUpdates(updates)
+}
+
+func (bot *Bot) handleHelp(chatID int64) {
 	bot.sendText(
 		chatID,
 		`Добро пожаловать\. Если есть вопросы или пожелания, обращайтесь к @unixowl\.
@@ -110,7 +116,7 @@ _На данный момент Тинькофф не предоставляет
 	)
 }
 
-func (bot *Bot) HandleStop(chatID int64) {
+func (bot *Bot) handleStop(chatID int64) {
 	if err := bot.db.DeleteApiKey(chatID); err != nil {
 		bot.sendError(chatID, fmt.Sprintf("Не удалось удалить API ключ: %v", err))
 	}

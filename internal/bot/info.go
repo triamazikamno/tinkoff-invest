@@ -99,11 +99,6 @@ func (d *dataCache) get(query string, exact bool) (instrument sdk.Instrument, in
 	return
 }
 
-func (bot *Bot) Start() {
-	go bot.dataCacheWorker()
-	go bot.priceWatcherDailyWorker()
-}
-
 func (bot *Bot) dataCacheWorker() {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
@@ -135,7 +130,7 @@ func (bot *Bot) dataCacheWorker() {
 	}
 }
 
-func (bot *Bot) HandleInfo(ctx context.Context, chatID int64, args []string) {
+func (bot *Bot) handleInfo(ctx context.Context, chatID int64, args []string) {
 	if len(args) < 1 {
 		bot.sendText(chatID, "Ошибка: не указан тикер\\.\nПример: */info AAPL*", true)
 		return

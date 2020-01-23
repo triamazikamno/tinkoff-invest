@@ -7,7 +7,7 @@ import (
 	"github.com/triamazikamno/tinkoff-invest/pkg/tinkoffinvest"
 )
 
-func (bot *Bot) HandleApiKey(ctx context.Context, chatID int64, args []string) {
+func (bot *Bot) handleApiKey(ctx context.Context, chatID int64, args []string) {
 	if len(args) == 0 {
 		bot.sendText(chatID, "Ошибка: отсутствует API ключ\\. [Инструкция по получению](https://tinkoffcreditsystems.github.io/invest-openapi/auth/#_2)\\.\nПример: */apikey t\\.xwbNB\\-uFZ4DSHG3Hk5kFkdk2kGDOpW4*", true)
 		return
@@ -23,7 +23,7 @@ func (bot *Bot) HandleApiKey(ctx context.Context, chatID int64, args []string) {
 	bot.sendText(chatID, "Принято", false)
 }
 
-func (bot *Bot) HandlePortfolioSummary(ctx context.Context, chatID int64) {
+func (bot *Bot) handlePortfolioSummary(ctx context.Context, chatID int64) {
 	apiKey := bot.fetchApiKey(chatID, true)
 	if apiKey == "" {
 		return
@@ -38,7 +38,7 @@ func (bot *Bot) HandlePortfolioSummary(ctx context.Context, chatID int64) {
 	bot.sendText(chatID, markDownEscape.Replace(portfolio.Summary()), true)
 }
 
-func (bot *Bot) HandlePortfolioDetails(ctx context.Context, chatID int64) {
+func (bot *Bot) handlePortfolioDetails(ctx context.Context, chatID int64) {
 	apiKey := bot.fetchApiKey(chatID, true)
 	if apiKey == "" {
 		return

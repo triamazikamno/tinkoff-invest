@@ -17,7 +17,7 @@ import (
 	"github.com/triamazikamno/tinkoff-invest/pkg/tinkoffinvest"
 )
 
-func (bot *Bot) HandleWatch(ctx context.Context, chatID int64, args []string) {
+func (bot *Bot) handleWatch(ctx context.Context, chatID int64, args []string) {
 	if len(args) < 2 {
 		bot.sendText(chatID, "Ошибка: не указан тикер или порог\\.\nПримеры:\n*/w AAPL 1%*\n*/w TWTR \\=30*", true)
 		return
@@ -78,7 +78,7 @@ func (bot *Bot) HandleWatch(ctx context.Context, chatID int64, args []string) {
 	bot.sendText(chatID, "Принято", false)
 }
 
-func (bot *Bot) HandleWatchGlobal(ctx context.Context, chatID int64, args []string) {
+func (bot *Bot) handleWatchGlobal(ctx context.Context, chatID int64, args []string) {
 	if len(args) < 1 {
 		bot.sendText(chatID, "Ошибка: не указан порог\\.\nПример:\n*/wg 10%*", true)
 		return
@@ -104,7 +104,7 @@ func (bot *Bot) HandleWatchGlobal(ctx context.Context, chatID int64, args []stri
 	bot.sendText(chatID, "Принято", false)
 }
 
-func (bot *Bot) HandleWatchDelete(ctx context.Context, chatID int64, args []string) {
+func (bot *Bot) handleWatchDelete(ctx context.Context, chatID int64, args []string) {
 	if len(args) < 1 {
 		bot.sendText(chatID, "Ошибка: не указан тикер\\.\nПример: */wd AAPL*", true)
 		return
@@ -137,7 +137,7 @@ func (bot *Bot) HandleWatchDelete(ctx context.Context, chatID int64, args []stri
 	bot.sendText(chatID, "Удаление успешно", false)
 }
 
-func (bot *Bot) HandleWatchList(ctx context.Context, chatID int64) {
+func (bot *Bot) handleWatchList(ctx context.Context, chatID int64) {
 	items, err := bot.db.PriceWatchList(chatID)
 	if err != nil {
 		bot.sendError(chatID, fmt.Sprintf("Ошибка получения списка отслеживания(%v)", err))
@@ -466,7 +466,7 @@ func (bot *Bot) notifyPriceDaily(chatID int64, item earner) {
 	)
 }
 
-func (bot *Bot) HandleGainers(ctx context.Context, chatID int64, args []string) {
+func (bot *Bot) handleGainers(ctx context.Context, chatID int64, args []string) {
 	var threshold float64
 	var n int
 	if len(args) > 0 {
@@ -513,7 +513,7 @@ func (bot *Bot) HandleGainers(ctx context.Context, chatID int64, args []string) 
 	}
 }
 
-func (bot *Bot) HandleLosers(ctx context.Context, chatID int64, args []string) {
+func (bot *Bot) handleLosers(ctx context.Context, chatID int64, args []string) {
 	var threshold float64
 	var n int
 	if len(args) > 0 {
