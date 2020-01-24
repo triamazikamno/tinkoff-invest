@@ -9,6 +9,7 @@ import (
 	"time"
 
 	sdk "github.com/TinkoffCreditSystems/invest-openapi-go-sdk"
+	"github.com/triamazikamno/tinkoff-invest/pkg/tinkoffinvest"
 )
 
 func main() {
@@ -26,9 +27,17 @@ func main() {
 	var totalRUB, totalUSD float64
 	curTime := time.Now()
 	colorRUB, colorUSD := "\033[32m", "\033[32m"
+	data := map[string][]sdk.PositionBalance{
+		"USD": make([]sdk.PositionBalance, 0),
+		"RUB": make([]sdk.PositionBalance, 0),
+		"EUR": make([]sdk.PositionBalance, 0),
+	}
 	for _, pos := range positions.Positions {
 		if pos.InstrumentType == "Currency" {
 			continue
+		}
+		if _, ok := data[string(pos.ExpectedYield.Currency)]; ok {
+			data[string(pos.ExpectedYield.Currency)] = append(data[string(pos.ExpectedYield.Currency)], pos)
 		}
 		switch pos.ExpectedYield.Currency {
 		case "USD":
@@ -47,28 +56,28 @@ func main() {
 		colorUSD = "\033[0m"
 		colorRUB = "\033[0m"
 	}
-	fmt.Printf("%s₽%.2f\033[0m %s$%.2f\033[0m\n---\n", colorRUB, totalRUB, colorUSD, totalUSD)
-	sort.Slice(positions.Positions, func(i, j int) bool {
-		return positions.Positions[i].ExpectedYield.Value > positions.Positions[j].ExpectedYield.Value
-	})
-	for _, pos := range positions.Positions {
-		if pos.InstrumentType == "Currency" {
-			continue
-		}
+	fmt.Printf("%s₽%.2f\033[0m %s$%.2f\033[0m\n", colorRUB, totalRUB, colorUSD, totalUSD)
+	for currency, items := range data {
+		items := items
+		sort.Slice(items, func(i, j int) bool {
+			return items[i].ExpectedYield.Value > items[j].ExpectedYield.Value
+		})
+		fmt.Println("---")
+		for _, pos := range items {
+			if pos.InstrumentType == "Currency" {
+				continue
+			}
 
-		color := "green"
-		switch {
-		case pos.ExpectedYield.Value < 0 && pos.ExpectedYield.Value > -0.8:
-			color = "white"
-		case pos.ExpectedYield.Value < 0:
-			color = "red"
-		}
+			color := "green"
+			switch {
+			case pos.ExpectedYield.Value < 0 && pos.ExpectedYield.Value > -0.8:
+				color = "white"
+			case pos.ExpectedYield.Value < 0:
+				color = "red"
+			}
 
-		sign := "$"
-		if pos.ExpectedYield.Currency == "RUB" {
-			sign = "₽"
+			sign := tinkoffinvest.Currency(currency).Sign()
+			fmt.Printf("%s: %s%.2f | color=%s\n", pos.Ticker, sign, pos.ExpectedYield.Value, color)
 		}
-		fmt.Printf("%s: %s%.2f | color=%s\n", pos.Ticker, sign, pos.ExpectedYield.Value, color)
 	}
-
 }
