@@ -147,7 +147,7 @@ func (bot *Bot) handleWatchList(ctx context.Context, chatID int64) {
 	var portfolio map[string]sdk.PositionBalance
 	if apiKey != "" {
 		ti := tinkoffinvest.NewAPI(apiKey)
-		portfolio, err = ti.PortfolioPositions(context.Background())
+		portfolio, err = ti.PortfolioPositions(context.Background(), bot.mainAccountID(chatID))
 		if err != nil {
 			bot.log.Error().Err(err).Int64("chatID", chatID).Msg("failed to get portfolio")
 		}
@@ -155,7 +155,7 @@ func (bot *Bot) handleWatchList(ctx context.Context, chatID int64) {
 	if portfolio != nil {
 		for i, pw := range items {
 			if position, ok := portfolio[pw.FIGI]; ok && position.AveragePositionPrice.Value > 0 {
-				positionValue := position.AveragePositionPrice.Value * float64(position.Lots)
+				positionValue := position.AveragePositionPrice.Value * position.Balance
 				currentValue := positionValue + position.ExpectedYield.Value
 
 				pw.PortfolioGain = currentValue*100/positionValue - 100
@@ -181,6 +181,27 @@ func (bot *Bot) handleWatchList(ctx context.Context, chatID int64) {
 
 func tickerURL(ticker string, t instrumentType) string {
 	return fmt.Sprintf("https://www.tinkoff.ru/invest/%s/%s/", t, ticker)
+}
+
+func (bot *Bot) mainAccountID(chatID int64) string {
+	if accID, ok := bot.accountCache.Load(chatID); ok {
+		return accID.(string)
+	}
+	apiKey := bot.fetchApiKey(chatID, false)
+	if apiKey == "" {
+		return ""
+	}
+	accounts, err := tinkoffinvest.NewAPI(apiKey).RestClient.Accounts(context.Background())
+	if err != nil {
+		return ""
+	}
+	for _, acc := range accounts {
+		if acc.Type == sdk.AccountTinkoff {
+			bot.accountCache.Store(chatID, acc.ID)
+			return acc.ID
+		}
+	}
+	return ""
 }
 
 func (bot *Bot) StreamingWorker(chatID int64) *tinkoffinvest.StreamingClient {
@@ -246,7 +267,7 @@ func (bot *Bot) StreamingWorker(chatID int64) *tinkoffinvest.StreamingClient {
 						if math.Abs(pc) >= pw.Threshold {
 							var portfolio map[string]sdk.PositionBalance
 							if isPrivateAccount {
-								portfolio, err = ti.PortfolioPositions(context.Background())
+								portfolio, err = ti.PortfolioPositions(context.Background(), bot.mainAccountID(chatID))
 								if err != nil {
 									bot.log.Error().Interface("pw", pw).Interface("event", event).Msg("failed to get portfolio")
 								}

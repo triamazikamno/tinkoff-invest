@@ -39,6 +39,7 @@ type Bot struct {
 	defaultApiKey      string
 	dataCache          dataCache
 	earners            earners
+	accountCache       sync.Map
 }
 
 func NewBot(db db.Database, tbot *tgbotapi.BotAPI, log zerolog.Logger, defaultApiKey string) *Bot {

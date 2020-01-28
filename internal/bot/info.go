@@ -153,16 +153,17 @@ func (bot *Bot) handleInfo(ctx context.Context, chatID int64, args []string) {
 	} else {
 		item, instrumentType, found = bot.dataCache.get(query, false)
 		if !found {
+			var searchItem sdk.SearchInstrument
 			if len(query) > 8 {
-				item, _ = ti.RestClient.SearchInstrumentByFIGI(ctx, query)
+				searchItem, _ = ti.RestClient.SearchInstrumentByFIGI(ctx, query)
 			}
 			if item.FIGI == "" {
 				instruments, _ := ti.RestClient.SearchInstrumentByTicker(ctx, query)
 				if len(instruments) > 0 {
-					item = instruments[0]
+					searchItem = instruments[0]
 				}
 			}
-			_, instrumentType, _ = bot.dataCache.get(item.Ticker, false)
+			_, instrumentType, _ = bot.dataCache.get(searchItem.Ticker, false)
 		}
 	}
 	if item.Ticker == "" {

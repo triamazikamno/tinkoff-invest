@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"os"
+	"runtime"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/jackc/pgx"
@@ -90,6 +91,6 @@ func main() {
 				botapi.StreamingWorker(pw.ChatID)
 			}
 		}
-
 	}
+	runtime.Goexit()
 }

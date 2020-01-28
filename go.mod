@@ -3,7 +3,7 @@ module github.com/triamazikamno/tinkoff-invest
 go 1.13
 
 require (
-	github.com/TinkoffCreditSystems/invest-openapi-go-sdk v0.3.1-0.20200109133639-b2f872516ad3
+	github.com/TinkoffCreditSystems/invest-openapi-go-sdk v0.4.0
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/bseolized/shadowmaker v0.0.0-20191013112750-d1f2d54dfcab
@@ -13,7 +13,7 @@ require (
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
 	github.com/jackc/pgx v3.6.0+incompatible
-	github.com/pkg/errors v0.8.1
+	github.com/pkg/errors v0.9.1
 	github.com/pplcc/plotext v0.0.0-20180221170324-68ab3c6e05c3
 	github.com/rs/zerolog v1.17.2
 	github.com/shopspring/decimal v0.0.0-20191130220710-360f2bc03045 // indirect

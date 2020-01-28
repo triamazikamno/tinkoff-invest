@@ -29,13 +29,20 @@ func (bot *Bot) handlePortfolioSummary(ctx context.Context, chatID int64) {
 		return
 	}
 	ti := tinkoffinvest.NewAPI(apiKey)
-	portfolio, err := ti.Portfolio(ctx)
+	accounts, err := ti.RestClient.Accounts(ctx)
 	if err != nil {
-		bot.sendError(chatID, fmt.Sprintf("Ошибка получения информации о портфеле(%v)", err))
+		bot.sendError(chatID, fmt.Sprintf("Ошибка получения счетов(%v)", err))
 		return
 	}
+	for _, acc := range accounts {
+		portfolio, err := ti.Portfolio(ctx, acc.ID)
+		if err != nil {
+			bot.sendError(chatID, fmt.Sprintf("Ошибка получения информации о портфеле(%v)", err))
+			return
+		}
 
-	bot.sendText(chatID, markDownEscape.Replace(portfolio.Summary()), true)
+		bot.sendText(chatID, string(acc.Type)+":\n"+markDownEscape.Replace(portfolio.Summary()), true)
+	}
 }
 
 func (bot *Bot) handlePortfolioDetails(ctx context.Context, chatID int64) {
@@ -44,24 +51,31 @@ func (bot *Bot) handlePortfolioDetails(ctx context.Context, chatID int64) {
 		return
 	}
 	ti := tinkoffinvest.NewAPI(apiKey)
-	portfolio, err := ti.Portfolio(ctx)
+	accounts, err := ti.RestClient.Accounts(ctx)
 	if err != nil {
-		bot.sendError(chatID, fmt.Sprintf("Ошибка получения информации о портфеле(%v)", err))
+		bot.sendError(chatID, fmt.Sprintf("Ошибка получения счетов(%v)", err))
 		return
 	}
-	var msg string
-	for _, item := range portfolio.Items {
-		if item.Ticker == "" {
-			continue
+	for _, acc := range accounts {
+		portfolio, err := ti.Portfolio(ctx, acc.ID)
+		if err != nil {
+			bot.sendError(chatID, fmt.Sprintf("Ошибка получения информации о портфеле(%v)", err))
+			return
 		}
-		details := item.Details() + "\n"
-		if len(msg)+len(details) >= 4096 {
+		msg := string(acc.Type) + ":\n"
+		for _, item := range portfolio.Items {
+			if item.Ticker == "" {
+				continue
+			}
+			details := item.Details() + "\n"
+			if len(msg)+len(details) >= 4096 {
+				bot.sendText(chatID, msg, true)
+				msg = ""
+			}
+			msg += details
+		}
+		if msg != "" {
 			bot.sendText(chatID, msg, true)
-			msg = ""
 		}
-		msg += details
-	}
-	if msg != "" {
-		bot.sendText(chatID, msg, true)
 	}
 }

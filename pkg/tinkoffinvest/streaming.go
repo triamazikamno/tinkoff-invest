@@ -132,7 +132,7 @@ type subscription struct {
 func (c *StreamingClient) SubscribeCandles(figi string, chatID int64) {
 	s, _ := c.subscriptions.LoadOrStore(
 		"candles-"+figi,
-		&subscription{cmd: CommandSubscribeCandle{FIGI: figi, Interval: sdk.CandleInterval1Min}},
+		&subscription{cmd: CommandSubscribeCandle{FIGI: figi, Interval: sdk.CandleInterval5Min}},
 	)
 	sub, ok := s.(*subscription)
 	if !ok || sub == nil {
@@ -166,7 +166,7 @@ func (c *StreamingClient) UnsubscribeCandles(figi string, chatID int64) {
 	select {
 	case <-c.ctx.Done():
 		return
-	case c.commands <- CommandUnsubscribeCandle{FIGI: figi, Interval: sdk.CandleInterval1Min}:
+	case c.commands <- CommandUnsubscribeCandle{FIGI: figi, Interval: sdk.CandleInterval5Min}:
 	}
 }
 

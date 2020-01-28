@@ -18,6 +18,7 @@ type Portfolio struct {
 	TotalPotentialProfit map[Currency]float64
 	TotalDividend        map[Currency]float64
 	TotalTax             map[Currency]float64
+	TotalPosition        map[Currency]float64
 	Items                []PortfolioItem
 }
 
@@ -33,9 +34,19 @@ func (p Portfolio) Summary() (summary string) {
 			p.TotalDividend[currency], -1*p.TotalFee[currency], p.TotalTax[currency],
 		)
 		summary += fmt.Sprintf(
-			"%s потенциальная прибыль: %s\n",
+			"%s вложений: %s%.2f\n",
+			currency.String(),
+			currency.Sign(), p.TotalPosition[currency],
+		)
+		var profitPc float64
+		if p.TotalPosition[currency] != 0 {
+			profitPc = p.TotalPotentialProfit[currency] * 100 / p.TotalPosition[currency]
+		}
+		summary += fmt.Sprintf(
+			"%s потенциальная прибыль: %s (%s%.2f%%)\n",
 			currency.String(),
 			formatMoney(currency, p.TotalPotentialProfit[currency]),
+			numSign(profitPc), profitPc,
 		)
 	}
 	return
@@ -103,8 +114,8 @@ func (item PortfolioItem) Details() string {
 	return details
 }
 
-func (ti *TinkoffInvest) PortfolioPositions(ctx context.Context) (map[string]sdk.PositionBalance, error) {
-	allPositions, err := ti.RestClient.PositionsPortfolio(ctx)
+func (ti *TinkoffInvest) PortfolioPositions(ctx context.Context, accountID string) (map[string]sdk.PositionBalance, error) {
+	allPositions, err := ti.RestClient.PositionsPortfolio(ctx, accountID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get portfolio positions")
 	}
@@ -117,17 +128,18 @@ func (ti *TinkoffInvest) PortfolioPositions(ctx context.Context) (map[string]sdk
 	return portfolio, nil
 }
 
-func (ti *TinkoffInvest) Portfolio(ctx context.Context) (Portfolio, error) {
+func (ti *TinkoffInvest) Portfolio(ctx context.Context, accountID string) (Portfolio, error) {
 	p := Portfolio{
 		TotalFee:             make(map[Currency]float64),
 		TotalProfit:          make(map[Currency]float64),
 		TotalPotentialProfit: make(map[Currency]float64),
 		TotalDividend:        make(map[Currency]float64),
 		TotalTax:             make(map[Currency]float64),
+		TotalPosition:        make(map[Currency]float64),
 		Items:                make([]PortfolioItem, 0),
 	}
 
-	portfolio, err := ti.PortfolioPositions(ctx)
+	portfolio, err := ti.PortfolioPositions(ctx, accountID)
 	if err != nil {
 		return p, errors.Wrap(err, "failed to get portfolio positions")
 	}
@@ -160,7 +172,7 @@ func (ti *TinkoffInvest) Portfolio(ctx context.Context) (Portfolio, error) {
 		stocks[stock.FIGI] = stock
 		tickers[stock.Ticker] = stock.FIGI
 	}
-	rawOperations, err := ti.RestClient.Operations(ctx, time.Now().Add(-1*5*24*365*time.Hour), time.Now(), "")
+	rawOperations, err := ti.RestClient.Operations(ctx, accountID, time.Now().Add(-1*5*24*365*time.Hour), time.Now(), "")
 	if err != nil {
 		return p, errors.Wrap(err, "failed to get list of operations")
 	}
@@ -289,8 +301,8 @@ func (ti *TinkoffInvest) Portfolio(ctx context.Context) (Portfolio, error) {
 		if item.Ticker == "" {
 			continue
 		}
-		if position, ok := portfolio[item.FIGI]; ok && position.Lots > 0 {
-			item.Holdings = position.AveragePositionPrice.Value * float64(position.Lots)
+		if position, ok := portfolio[item.FIGI]; ok && position.Balance > 0 {
+			item.Holdings = position.AveragePositionPrice.Value * position.Balance
 
 			if _, ok := bonds[item.FIGI]; !ok && item.Holdings == 0 {
 
@@ -308,7 +320,7 @@ func (ti *TinkoffInvest) Portfolio(ctx context.Context) (Portfolio, error) {
 			} else {
 				item.ExpectedYield = position.ExpectedYield.Value
 			}
-
+			p.TotalPosition[item.Currency] += item.Holdings
 			item.ExpectedYieldPc = item.ExpectedYield * 100 / item.Holdings
 			p.TotalPotentialProfit[item.Currency] += item.ExpectedYield
 			p.Items[i] = item

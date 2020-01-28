@@ -20,17 +20,17 @@ func NewAPI(apiKey string) *TinkoffInvest {
 	return t
 }
 
-func (ti *TinkoffInvest) InstrumentByTicker(ctx context.Context, ticker string) (sdk.Instrument, error) {
+func (ti *TinkoffInvest) InstrumentByTicker(ctx context.Context, ticker string) (sdk.SearchInstrument, error) {
 	instruments, err := ti.RestClient.SearchInstrumentByTicker(ctx, ticker)
 	if err != nil {
-		return sdk.Instrument{}, err
+		return sdk.SearchInstrument{}, err
 	}
 	for _, instrument := range instruments {
 		if instrument.Ticker == ticker {
 			return instrument, nil
 		}
 	}
-	return sdk.Instrument{}, nil
+	return sdk.SearchInstrument{}, nil
 }
 
 type Trade struct {
