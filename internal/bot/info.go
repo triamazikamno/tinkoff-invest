@@ -11,11 +11,11 @@ import (
 	"time"
 
 	sdk "github.com/TinkoffCreditSystems/invest-openapi-go-sdk"
-	"github.com/bseolized/shadowmaker/util"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/pkg/errors"
 	"github.com/pplcc/plotext"
 	"github.com/pplcc/plotext/custplotter"
+	"github.com/triamazikamno/tinkoff-invest/internal/duration"
 	"github.com/triamazikamno/tinkoff-invest/pkg/tinkoffinvest"
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/vg"
@@ -240,7 +240,7 @@ ISIN: %s
 			interval = sdk.CandleInterval1Month
 			periods = []Period{newPeriod(50*month, time.Now())}
 		default:
-			rawPeriod, err := util.ParseDuration(periodArg, "h")
+			rawPeriod, err := duration.Parse(periodArg, "h")
 			period := int64(rawPeriod / 60000)
 			if period < 5 {
 				bot.sendError(chatID, fmt.Sprintf("Неверно задан период(%v)", err))

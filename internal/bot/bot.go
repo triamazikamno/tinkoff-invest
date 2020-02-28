@@ -24,7 +24,7 @@ func init() {
 	}
 }
 
-var markDownEscape = strings.NewReplacer("+", `\+`, ".", `\.`, "(", `\(`, ")", `\)`, "-", `\-`)
+var markDownEscape = strings.NewReplacer("+", `\+`, ".", `\.`, "(", `\(`, ")", `\)`, "-", `\-`, "!", `\!`)
 
 type TinkoffAPI interface {
 	FIGI(ctx context.Context, ticker string) (string, error)
