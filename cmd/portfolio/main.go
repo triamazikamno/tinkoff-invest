@@ -19,7 +19,7 @@ func main() {
 		return
 	}
 	ti := sdk.NewRestClient(apiKey)
-	positions, err := ti.Portfolio(context.Background())
+	positions, err := ti.Portfolio(context.Background(), sdk.DefaultAccount)
 	if err != nil {
 		log.Fatalf("failed to get portfolio: %v", err)
 		return
