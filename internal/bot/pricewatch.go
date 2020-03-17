@@ -352,10 +352,8 @@ func (bot *Bot) priceWatcherDailyWorker() {
 			seen[item.Symbol.Ticker] = struct{}{}
 		}
 
-		res, err = http.Post(
-			"https://query2.finance.yahoo.com/v1/finance/screener?lang=en-US&formatted=false",
-			"application/json",
-			strings.NewReader(`{"offset":0,"size":100,"sortField":"percentchange","sortType":"DESC","quoteType":"EQUITY","query":{"operator":"AND","operands":[{"operator":"GT","operands":["percentchange",3]},{"operator":"or","operands":[{"operator":"EQ","operands":["region","us"]},{"operator":"EQ","operands":["region","ru"]}]},{"operator":"or","operands":[{"operator":"BTWN","operands":["intradaymarketcap",2000000000,10000000000]},{"operator":"BTWN","operands":["intradaymarketcap",10000000000,100000000000]},{"operator":"GT","operands":["intradaymarketcap",100000000000]}]},{"operator":"gt","operands":["dayvolume",15000]}]},"userId":"","userIdType":"guid"}`),
+		res, err = http.Get(
+			"https://query2.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=false&lang=en-US&region=US&scrIds=day_gainers&start=0&count=100",
 		)
 		if err != nil {
 			bot.log.Error().Err(err).Msg("failed to get daily prices from yahoo")
@@ -393,10 +391,8 @@ func (bot *Bot) priceWatcherDailyWorker() {
 			}
 		}
 
-		res, err = http.Post(
-			"https://query2.finance.yahoo.com/v1/finance/screener?lang=en-US&formatted=false",
-			"application/json",
-			strings.NewReader(`{"offset":0,"size":100,"sortField":"percentchange","sortType":"DESC","quoteType":"EQUITY","query":{"operator":"AND","operands":[{"operator":"LT","operands":["percentchange",-2]},{"operator":"or","operands":[{"operator":"EQ","operands":["region","us"]},{"operator":"EQ","operands":["region","ru"]}]},{"operator":"or","operands":[{"operator":"BTWN","operands":["intradaymarketcap",2000000000,10000000000]},{"operator":"BTWN","operands":["intradaymarketcap",10000000000,100000000000]},{"operator":"GT","operands":["intradaymarketcap",100000000000]}]},{"operator":"gt","operands":["dayvolume",15000]}]},"userId":"","userIdType":"guid"}`),
+		res, err = http.Get(
+			"https://query2.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=false&lang=en-US&region=US&scrIds=day_losers&start=0&count=100",
 		)
 		if err != nil {
 			bot.log.Error().Err(err).Msg("failed to get daily prices from yahoo")
