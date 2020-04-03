@@ -143,7 +143,7 @@ func (bot *Bot) handleStop(chatID int64) {
 func (bot *Bot) sendText(chatID int64, msg string, isMarkdown bool) {
 	_, err := bot.tg.Send(botMessage(tgbotapi.NewMessage(chatID, msg), isMarkdown))
 	if err != nil {
-		bot.log.Err(err).Int64("chatID", chatID).Msg("failed to send telegram message")
+		bot.log.Err(err).Int64("chatID", chatID).Str("msg", msg).Msg("failed to send telegram message")
 	}
 }
 

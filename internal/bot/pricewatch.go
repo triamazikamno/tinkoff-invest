@@ -468,11 +468,13 @@ func (bot *Bot) notifyPriceDaily(chatID int64, item earner) {
 	}
 	ticker := item.Ticker
 	if _, t, ok := bot.dataCache.get(ticker, true); ok {
-		ticker = fmt.Sprintf("[$%s %s](%s)", item.Ticker, markDownEscape.Replace(item.Name), tickerURL(item.Ticker, t))
+		ticker = fmt.Sprintf(
+			"[$%s %s](%s)", markDownEscape.Replace(item.Ticker), markDownEscape.Replace(item.Name), tickerURL(item.Ticker, t),
+		)
 	} else {
 		ticker = fmt.Sprintf(
 			"[\\*%s %s](https://finance.yahoo.com/quote/%s)",
-			item.Ticker, markDownEscape.Replace(item.Name), item.Ticker,
+			markDownEscape.Replace(item.Ticker), markDownEscape.Replace(item.Name), item.Ticker,
 		)
 	}
 	bot.log.Info().Int64("chatID", chatID).Interface("item", item).Msg("Sending global watch alarm")
